@@ -3,3 +3,5 @@ setup.py
 build
 dist
 *.egg-info
+*.pyc
+_build

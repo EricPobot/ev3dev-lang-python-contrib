@@ -36,7 +36,7 @@ import math
 import threading
 import time
 
-from .motors import RegulatedMotor
+from ev3dev.motors import RegulatedMotor
 
 
 class BasePilot(object):
