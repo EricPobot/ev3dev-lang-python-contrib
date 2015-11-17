@@ -1,2 +1,5 @@
 setup.py
 .idea
+build
+dist
+*.egg-info
