@@ -12,6 +12,7 @@ its organization and API.
    :maxdepth: 1
 
    mod-navigation
+   mod-chassis
 
 Demos
 -----
@@ -23,7 +24,7 @@ They are gathered in the `demos` sub-folder of the project.
 .. toctree::
    :maxdepth: 1
 
-   demo-navigation
+   demos
 
 Indices and tables
 ==================
