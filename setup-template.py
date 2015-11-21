@@ -9,7 +9,7 @@ setup(
     author_email='eric@pobot.org',
     license='MIT',
     include_package_data=True,
-    packages=['ev3dev', 'ev3dev.contrib'],
+    packages=['ev3dev', 'ev3dev.robotics'],
     install_requires=['python-ev3dev-ep'],
     package_dir={'': 'src'},
     )

@@ -23,7 +23,7 @@
 # THE SOFTWARE.
 # -----------------------------------------------------------------------------
 
-""" Pilot demonstration.
+""" Chassis demonstration.
 """
 
 import os
@@ -31,40 +31,38 @@ import time
 
 from ev3dev import ev3
 
-from ev3dev.robotics.navigation import DifferentialPilot
+from ev3dev.robotics.chassis import DifferentialWheeledChassis, StandardWheel
+
+import pdb
+pdb.set_trace()
 
 _HERE = os.path.dirname(__file__)
 
-pilot = DifferentialPilot(
-    wheel_diameter=43.2,
-    track_width=140,
-    left_motor=ev3.LargeMotor(port=ev3.OUTPUT_B),
-    right_motor=ev3.LargeMotor(port=ev3.OUTPUT_C),
-    motors_settings={
-        'ramp_up_sp': 500
-    }
-)
+wheel_left = StandardWheel(ev3.LargeMotor(port=ev3.OUTPUT_B), 43.2, -75)
+wheel_right = StandardWheel(ev3.LargeMotor(port=ev3.OUTPUT_C), 43.2, 75)
+chassis = DifferentialWheeledChassis((wheel_left, wheel_right))
 
-pilot.travel_speed = 100
-pilot.rotate_speed = 90
+
+chassis.travel_speed = 100
+chassis.rotate_speed = 90
 
 start_time = None
 
 
-def started(pilot):
+def started(chassis):
     global start_time
     start_time = time.time()
     print('> started')
 
 
-def complete(pilot):
+def complete(chassis):
     print('> completed in %.1fs' % (time.time() - start_time))
 
 
-def stalled(pilot):
+def stalled(chassis):
     print('> ** stalled **')
 
-mon = pilot.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
+mon = chassis.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
 
 print('waiting...')
 mon.wait(5)
@@ -76,34 +74,35 @@ elif mon.stalled:
 else:
     print('success')
 
-pilot.travel(distance=-200, speed=50, on_start=started, on_complete=complete, on_stalled=stalled).wait(5)
+chassis.travel(distance=-200, speed=50, on_start=started, on_complete=complete, on_stalled=stalled).wait(5)
 print('back home')
 
-print('forward forever')
-pilot.forward()
-time.sleep(1)
-print('time to stop')
-pilot.stop()
-
-print('backward forever')
-pilot.backward(speed=50)
-time.sleep(2)
-pilot.stop()
+# print('forward forever')
+# chassis.forward()
+# time.sleep(1)
+# print('time to stop')
+# chassis.stop()
+#
+# print('backward forever')
+# chassis.backward(speed=50)
+# time.sleep(2)
+# chassis.stop()
 
 print('rotate 90L')
-pilot.rotate_left(angle=90, on_start=started, on_complete=complete).wait(5)
+chassis.rotate_left(angle=90, on_start=started, on_complete=complete).wait(5)
 print('rotate 90R')
-pilot.rotate_right(angle=90, speed=45, on_start=started, on_complete=complete).wait(5)
+chassis.rotate_right(angle=90, speed=45, on_start=started, on_complete=complete).wait(5)
 
 print('arc left-fwd')
-pilot.arc(140, 90).wait(5)
+chassis.arc(140, 90).wait(5)
 print('arc left-back')
-pilot.arc(140, -90).wait(5)
+chassis.arc(140, -90).wait(5)
 
 print('null radius arcs')
-pilot.arc(0, 90).wait(5)
-pilot.arc(0, -90).wait(5)
+chassis.arc(0, 90).wait(5)
+chassis.arc(0, -90).wait(5)
 
 time.sleep(3)
-pilot.stop(stop_command=ev3.RegulatedMotor.STOP_COMMAND_COAST)
+chassis.stop(stop_command=ev3.RegulatedMotor.STOP_COMMAND_COAST)
+
 print("That's all folks")
