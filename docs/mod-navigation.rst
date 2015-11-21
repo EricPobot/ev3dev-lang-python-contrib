@@ -1,12 +1,14 @@
-``ev3dev.navigation``
-=====================
+``ev3dev.robotics.navigation``
+==============================
 
-.. automodule:: ev3dev.contrib.navigation
+.. deprecated:: replaced by :py:mod:`ev3dev.robotics.chassis`
+
+.. automodule:: ev3dev.robotics.navigation
 
 Module interface
 ----------------
 
-.. py:currentmodule:: ev3dev.contrib.navigation
+.. py:currentmodule:: ev3dev.robotics.navigation
 
 .. autosummary::
     :nosignatures:
