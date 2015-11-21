@@ -31,7 +31,7 @@ import time
 
 from ev3dev import ev3
 
-from ev3dev.robotics.navigation import DifferentialPilot
+from ev3dev.contrib.navigation import DifferentialPilot
 
 _HERE = os.path.dirname(__file__)
 
@@ -51,17 +51,17 @@ pilot.rotate_speed = 90
 start_time = None
 
 
-def started(pilot):
+def started(monitor):
     global start_time
     start_time = time.time()
     print('> started')
 
 
-def complete(pilot):
+def complete(monitor):
     print('> completed in %.1fs' % (time.time() - start_time))
 
 
-def stalled(pilot):
+def stalled(monitor):
     print('> ** stalled **')
 
 mon = pilot.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
