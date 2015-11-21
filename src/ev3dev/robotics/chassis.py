@@ -80,6 +80,7 @@ class Wheel(object):
     @property
     def motor(self):
         """ Read-only access to the wheel motor
+
         :type: RegulatedMotor
         """
         return self._motor
@@ -87,6 +88,7 @@ class Wheel(object):
     @property
     def diameter(self):
         """ Read-only access to the wheel diameter
+
         :type: float
         """
         return self._diameter
@@ -95,6 +97,7 @@ class Wheel(object):
     def radius(self):
         """ Read-only access to the wheel radius (derived from the diameter
         for speeding up computations)
+
         :type: float
         """
         return self._radius
@@ -102,6 +105,7 @@ class Wheel(object):
     @property
     def gear_ratio(self):
         """ Read-only access to the gear train ratio
+
         :type: float
         """
         return self._gear_ratio
@@ -109,6 +113,7 @@ class Wheel(object):
     @property
     def invert(self):
         """ Read-only access to the inverted motion indicator
+
         :type: bool
         """
         return self._invert
@@ -138,6 +143,7 @@ class Wheel(object):
     @property
     def angular_position_set_point(self):
         """ Set point of the wheel angular position (in radians)
+
         :type: float
         """
         return self.radians(self._motor.position_sp / self._gear_ratio)
@@ -149,6 +155,7 @@ class Wheel(object):
     @property
     def angular_speed_set_point(self):
         """ Set point of the wheel angular speed (in radians/sec)
+
         :type: float
         """
         return self.radians(self._motor.speed_sp / self._gear_ratio)
@@ -160,6 +167,7 @@ class Wheel(object):
     @property
     def speed_regulation_enabled(self):
         """ Speed regulation enabling
+
         :type: bool
         """
         return self._motor.speed_regulation_enabled == RegulatedMotor.SPEED_REGULATION_ON
@@ -172,6 +180,7 @@ class Wheel(object):
     @property
     def linear_speed_sp(self):
         """ Wheel linear speed, in wheel unit per sec
+
         :type: float
         """
         return self.radians(self.angular_speed_set_point) * self._diameter / 2.0
@@ -207,6 +216,7 @@ class StandardWheel(Wheel):
     @property
     def offset(self):
         """ Read-access to the wheel distance to the robot main axis.
+
         :type: float
         """
         return self._offset
@@ -240,6 +250,7 @@ class HolonomicWheel(StandardWheel):
     @property
     def angle(self):
         """ Read-access to the wheel axis angle to the robot main axis.
+
         :type: float
         """
         return self._angle
@@ -340,6 +351,9 @@ class WheeledChassis(object):
 
 
 class DifferentialWheeledChassis(WheeledChassis):
+    """ A chassis based on two wheels (or groups of wheels, or treads) which
+    is controlled like a tank.
+    """
     _travel_speed = 0
     _rotation_speed = 0
 
@@ -604,9 +618,6 @@ class MotionMonitor(threading.Thread):
             # and the previous ones (if available)
             # TODO find why the speed cannot be used (always 0)
             if prev_positions and any((pp == sp[1] and 'holding' not in sp[0] for pp, sp in zip(prev_positions, s_p))):
-                # print('prev_positions=%s' % prev_positions)
-                # print('s_p=%s' % s_p)
-                # print('> stalled')
                 self._stalled = True
                 if self._on_stalled:
                     self._on_stalled(self._chassis, **self._callback_args)
