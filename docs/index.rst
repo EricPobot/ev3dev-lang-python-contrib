@@ -2,10 +2,8 @@
 
 Contribution packages to Python ev3dev_.
 
-.. _ev3dev: http://ev3dev.org
-
 These packages bring high level functions such as navigation, path finding,...
-The are strongly inspired by LeJOS class library, and try to mimic as much as possible
+The are strongly inspired by LeJOS_ class library, and try to mimic as much as possible
 its organization and API.
 
 .. toctree::
@@ -33,3 +31,5 @@ Indices and tables
 * :ref:`modindex`
 * :ref:`search`
 
+.. _ev3dev: http://ev3dev.org
+.. _LeJOS: http://www.lejos.org/ev3/docs/
