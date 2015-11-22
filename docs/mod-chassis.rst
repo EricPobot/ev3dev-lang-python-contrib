@@ -13,26 +13,19 @@ Module interface
 
     Wheel
     StandardWheel
-    HolonomicWheel
+    OmniWheel
+    Chassis
     WheeledChassis
     DifferentialWheeledChassis
-    MotionMonitor
+    OmniWheeledChassis
 
 Reference
 ---------
 
-End-user classes
-^^^^^^^^^^^^^^^^
+Chassis classes
+^^^^^^^^^^^^^^^
 
-.. autoclass:: Wheel
-    :members:
-    :show-inheritance:
-
-.. autoclass:: StandardWheel
-    :members:
-    :show-inheritance:
-
-.. autoclass:: HolonomicWheel
+.. autoclass:: Chassis
     :members:
     :show-inheritance:
 
@@ -44,9 +37,21 @@ End-user classes
     :members:
     :show-inheritance:
 
+.. autoclass:: OmniWheeledChassis
+    :members:
+    :show-inheritance:
+
 Support classes
 ^^^^^^^^^^^^^^^
 
-.. autoclass:: MotionMonitor
+.. autoclass:: Wheel
+    :members:
+    :show-inheritance:
+
+.. autoclass:: StandardWheel
+    :members:
+    :show-inheritance:
+
+.. autoclass:: OmniWheel
     :members:
     :show-inheritance:

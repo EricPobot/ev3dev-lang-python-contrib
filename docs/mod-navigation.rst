@@ -1,8 +1,6 @@
 ``ev3dev.robotics.navigation``
 ==============================
 
-.. deprecated:: replaced by :py:mod:`ev3dev.robotics.chassis`
-
 .. automodule:: ev3dev.robotics.navigation
 
 Module interface
@@ -13,9 +11,11 @@ Module interface
 .. autosummary::
     :nosignatures:
 
-    BasePilot
-    DifferentialPilot
+    MovePilot
     MotionMonitor
+    NullMotionMonitor
+    Point
+    Pose
 
 Reference
 ---------
@@ -23,11 +23,7 @@ Reference
 End-user classes
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: BasePilot
-    :members:
-    :show-inheritance:
-
-.. autoclass:: DifferentialPilot
+.. autoclass:: MovePilot
     :members:
     :show-inheritance:
 
@@ -35,5 +31,17 @@ Support classes
 ^^^^^^^^^^^^^^^
 
 .. autoclass:: MotionMonitor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: NullMotionMonitor
+    :members:
+    :show-inheritance:
+
+.. autoclass:: Point
+    :members:
+    :show-inheritance:
+
+.. autoclass:: Pose
     :members:
     :show-inheritance:

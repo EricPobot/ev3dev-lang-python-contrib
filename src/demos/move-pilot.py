@@ -23,7 +23,7 @@
 # THE SOFTWARE.
 # -----------------------------------------------------------------------------
 
-""" Chassis demonstration.
+""" Move pilot demonstration.
 """
 
 import os
@@ -32,6 +32,7 @@ import time
 from ev3dev import ev3
 
 from ev3dev.robotics.chassis import DifferentialWheeledChassis, StandardWheel
+from ev3dev.robotics.navigation import MovePilot
 
 # import pdb
 # pdb.set_trace()
@@ -40,11 +41,12 @@ _HERE = os.path.dirname(__file__)
 
 wheel_left = StandardWheel(ev3.LargeMotor(port=ev3.OUTPUT_B), 43.2, -75)
 wheel_right = StandardWheel(ev3.LargeMotor(port=ev3.OUTPUT_C), 43.2, 75)
+
 chassis = DifferentialWheeledChassis((wheel_left, wheel_right))
-
-
 chassis.travel_speed = 75
 chassis.rotate_speed = 90
+
+pilot = MovePilot(chassis)
 
 start_time = None
 
@@ -62,7 +64,7 @@ def complete(chassis):
 def stalled(chassis):
     print('> ** stalled **')
 
-mon = chassis.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
+mon = pilot.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
 
 print('waiting...')
 mon.wait(5)
@@ -74,7 +76,7 @@ elif mon.stalled:
 else:
     print('success')
 
-chassis.travel(distance=-200, speed=50, on_start=started, on_complete=complete, on_stalled=stalled).wait(5)
+pilot.travel(distance=-200, speed=50, on_start=started, on_complete=complete, on_stalled=stalled).wait(5)
 print('back home')
 
 # print('forward forever')
@@ -89,20 +91,20 @@ print('back home')
 # chassis.stop()
 
 print('rotate 90L')
-chassis.rotate_left(angle=90, on_start=started, on_complete=complete).wait(5)
+pilot.rotate_left(angle=90, on_start=started, on_complete=complete).wait(5)
 print('rotate 90R')
-chassis.rotate_right(angle=90, speed=45, on_start=started, on_complete=complete).wait(5)
+pilot.rotate_right(angle=90, speed=45, on_start=started, on_complete=complete).wait(5)
 
 print('arc left-fwd')
-chassis.arc(140, 90).wait(5)
+pilot.arc(140, 90).wait(5)
 print('arc left-back')
-chassis.arc(140, -90).wait(5)
+pilot.arc(140, -90).wait(5)
 
 print('null radius arcs')
-chassis.arc(0, 90).wait(5)
-chassis.arc(0, -90).wait(5)
+pilot.arc(0, 90).wait(5)
+pilot.arc(0, -90).wait(5)
 
 time.sleep(3)
-chassis.stop(stop_option=ev3.RegulatedMotor.STOP_COMMAND_COAST)
+pilot.stop(stop_option=DifferentialWheeledChassis.StopOption.COAST)
 
 print("That's all folks")

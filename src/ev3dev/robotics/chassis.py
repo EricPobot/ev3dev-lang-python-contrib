@@ -30,8 +30,6 @@ to benefit as much as possible from Python strengths.
 """
 
 import math
-import time
-import threading
 
 from ev3dev.motors import RegulatedMotor
 
@@ -222,8 +220,8 @@ class StandardWheel(Wheel):
         return self._offset
 
 
-class HolonomicWheel(StandardWheel):
-    """ A holonomic wheel.
+class OmniWheel(StandardWheel):
+    """ A omni-wheel (aka omni-directional wheel or holonomic wheel).
 
     In addition to the standard wheel, its distance is defined with respect to
     the robot center of rotation, and its position is defined by the angle of
@@ -242,7 +240,7 @@ class HolonomicWheel(StandardWheel):
         if angle is None or angle < 0:
             raise ValueError('angle is mandatory and must be >= 0')
 
-        super(HolonomicWheel, self).__init__(
+        super(OmniWheel, self).__init__(
             motor=motor, diameter=diameter, gear_ratio=gear_ratio, offset=offset, invert=invert
         )
         self._angle = angle
@@ -256,38 +254,13 @@ class HolonomicWheel(StandardWheel):
         return self._angle
 
 
-class WheeledChassis(object):
-    """ Represents the chassis of a wheeled robot, whatever configuration is used.
+class Chassis(object):
+    """ Root abstract class for all kinds of chassis.
+
+    It defines the interface common for all chassis.
     """
     _travel_speed = 0
     _rotate_speed = 0
-
-    def __init__(self, wheels=None, motors_settings=None):
-        """
-        Args:
-            wheels (iterable[Wheel]): the wheels of the chassis
-            motors_settings (dict): optional properties for initializing the motors
-        """
-        self._check_wheels(wheels)
-        self._wheels = wheels
-
-        self.reset_motors()
-
-        # configure the motors, using reasonable settings for not specified ones
-        settings = {
-            'duty_cycle_sp': 100,
-            'speed_regulation': RegulatedMotor.SPEED_REGULATION_ON,
-            'stop_command': RegulatedMotor.STOP_COMMAND_HOLD,
-            'ramp_up_sp': 500,
-            'ramp_down_sp': 500
-        }
-        if motors_settings:
-            settings.update(motors_settings)
-        self.setup_motors(**settings)
-
-    @property
-    def wheels(self):
-        return self._wheels
 
     @property
     def travel_speed(self):
@@ -325,6 +298,130 @@ class WheeledChassis(object):
     def rotate_speed(self, speed):
         self._rotate_speed = abs(speed)
 
+    def travel(self, distance, speed=None):
+        """ Travels for the specified distance at a given speed.
+
+        This method is asynchronous, which means that it returns immediately. It returns
+        the monitor created for tracking the motion.
+
+        In addition, callable can be passed, which will be called on various events
+        (start of the move, end of the move, stalled detection).
+
+        Args:
+            distance (float): the distance to be traveled, in wheel diameter unit
+            speed (float): optional local override of the default speed as set by :py:attr:`travel_speed`
+        """
+        raise NotImplementedError()
+
+    def arc(self, radius, angle, speed=None):
+        """ Moves the robot along an arc with a specified radius and angle, after which the robot stops moving.
+
+        If radius is positive, the robot turns left, the center of the circle being on its left side. If it
+        is negative, the move takes place on the opposite side. If radius is null, the robot rotates in place.
+
+        The sign of the angle gives the direction of the spin (CCW if positive, CW if negative). Hence the combined
+        signs of radius and angle specify the direction of move (forward or backward) along the arc. If both are
+        the same, the robot will move forward. If they are different it will move backwards.
+
+        The robot will stop when its heading has changed by the provided angle.
+
+        .. note::
+
+            In case of rotation in place (null radius), the currently set angular speed is used.
+
+            If provided, the sign of the speed will be ignored, since inferred by the ones of radius and angle.
+
+        Args:
+            radius (float): radius of the arc, 0 for a rotation in place
+            angle (float): the heading change
+            speed (float): the speed along the path, if different from default one
+        """
+        raise NotImplementedError()
+
+    def rotate(self, angle, speed=None):
+        """ Rotates for the specified amount of degrees.
+
+        Nothing else but the special case of a null radius arc.
+
+        See :py:meth:`arc` for detailed documentation.
+        """
+        return self.arc(0, angle, speed)
+
+    def rotate_right(self, angle, **kwargs):
+        """ Convenience shortcut to avoid taking care of the angle sign.
+
+        The sign if the passed angle value is discarded.
+
+        .. seealso::
+
+            :py:meth:`rotate`
+        """
+        return self.rotate(-abs(angle), **kwargs)
+
+    def rotate_left(self, angle, **kwargs):
+        """ Same as :py:meth:`rotate_right` in the opposite direction.
+        """
+        return self.rotate(abs(angle), **kwargs)
+
+    def stop(self, stop_option=None):
+        """ Immediate stop, using the current motor stop setting.
+
+        Args:
+            stop_option (int): optional stop command, among `WheeledChassis.StopOption` values.
+                If not provided, use the current motors setting
+        """
+        raise NotImplementedError()
+
+
+class WheeledChassis(Chassis):
+    """ Represents the chassis of a wheeled robot, whatever configuration is used.
+
+    .. note:: Even if we use the term *wheel*, this chassis class can also be used
+        with treads based chassis, as long as treads are compatible with the type of platform.
+    """
+    class StopOption(object):
+        """ The various options for stopping the chassis motors
+        """
+        #: disconnect power
+        COAST = 1
+        #: brake by short circuiting the motor
+        BRAKE = 2
+        #: actively hold the position
+        HOLD = 3
+
+    _stop_commands = {
+        StopOption.COAST: RegulatedMotor.STOP_COMMAND_COAST,
+        StopOption.BRAKE: RegulatedMotor.STOP_COMMAND_BRAKE,
+        StopOption.HOLD: RegulatedMotor.STOP_COMMAND_HOLD
+    }
+
+    def __init__(self, wheels=None, motors_settings=None):
+        """
+        Args:
+            wheels (iterable[Wheel]): the wheels of the chassis
+            motors_settings (dict): optional properties for initializing the motors
+        """
+        self._check_wheels(wheels)
+        self._wheels = wheels
+
+        self.reset_motors()
+
+        # configure the motors, using reasonable settings for not specified ones
+        settings = {
+            'duty_cycle_sp': 100,
+            'speed_regulation': RegulatedMotor.SPEED_REGULATION_ON,
+            'stop_command': RegulatedMotor.STOP_COMMAND_HOLD,
+            'ramp_up_sp': 500,
+            'ramp_down_sp': 500
+        }
+        if motors_settings:
+            settings.update(motors_settings)
+        self.setup_motors(**settings)
+
+    @property
+    def wheels(self):
+        return self._wheels
+
     def reset_motors(self):
         """ Resets the motors
         """
@@ -353,70 +450,38 @@ class WheeledChassis(object):
 class DifferentialWheeledChassis(WheeledChassis):
     """ A chassis based on two wheels (or groups of wheels, or treads) which
     is controlled like a tank.
-    """
-    _travel_speed = 0
-    _rotation_speed = 0
 
+    Usually, such chassis are made of two driving wheels, plus one or more
+    passive casters. Any number of driving wheels can be provided
+    (at least two of course), the sign of their offset indicating the left
+    or right side they are mounted.
+
+    If using omni-wheels for building the robot (not a good idea since no
+    lateral guidance), they will be considered as standard ones.
+    """
     def _check_wheels(self, wheels):
         """
         Args:
             wheels (list[StandardWheel]): the wheels of the chassis
         """
         super(DifferentialWheeledChassis, self)._check_wheels(wheels)
+
+        if len(wheels) < 2:
+            raise ValueError('this chassis needs at least two wheels')
         if not all((isinstance(wheel, StandardWheel) for wheel in wheels)):
             raise ValueError('this chassis supports standard wheels only')
 
-    def _monitor_move(self, on_start=None, on_complete=None, on_stalled=None, callback_args=None):
-        monitor = MotionMonitor(self,
-                                on_start=on_start,
-                                on_complete=on_complete,
-                                on_stalled=on_stalled,
-                                callback_args=callback_args
-                                )
-        monitor.start()
-        return monitor
-
-    def travel(self, distance, speed=None, on_start=None, on_complete=None, on_stalled=None, callback_args=None):
+    def travel(self, distance, speed=None):
         """ Travels for the specified distance at a given speed.
 
-        This method is asynchronous, which means that it returns immediately. It returns
-        the monitor created for tracking the motion.
+        This method is asynchronous, which means that it returns immediately. To manage the
+        movement, it is easier to use a :py:class:`.navigation.MovePilot` on top of the chassis.
 
-        In addition, callable can be passed, which will be called on various events
-        (start of the move, end of the move, stalled detection).
-
-        Example::
-
-            >>> from ev3dev.ev3 import LargeMotor
-            >>>
-            >>> wheel_left = StandardWheel(LargeMotor('out_B'), 43.2, -75)
-            >>> wheel_right = StandardWheel(LargeMotor('out_C'), 43.2, 75)
-            >>> chassis = DifferentialWheeledChassis((wheel_left, wheel_right))
-            >>>
-            >>> # synchronous usage with a forever wait
-            >>> chassis.travel(250).wait()
-            >>>
-            >>> # asynchronous usage
-            >>> def arrived(chassis):
-            >>>     print('just arrived')
-            >>>
-            >>> mvt = chassis.travel(distance=250, speed=100, on_complete=arrived)
-            >>> # ... do something while traveling
-            >>>
-            >>> # wait at most 10 secs for arrival at destination before doing something else
-            >>> mvt.wait(delay=10)
-            >>> if mvt.running:
-            >>>     print("something wrong happened while traveling")
-            >>> else:
-            >>>     print("we are at destination")
+        The robot will stop when the distance have been reached.
 
         Args:
             distance (float): the distance to be traveled, in wheel diameter unit
             speed (float): optional local override of the default speed as set by :py:attr:`travel_speed`
-            on_start: optional callback for motion start event handling
-            on_complete: optional callback for completion event handling
-            on_stalled: optional callback for stalled detection handling
-            callback_args (dict): optional dictionary defining the kwargs passed to the callbacks
 
         Returns:
             MotionMonitor: the motion monitoring object
@@ -424,24 +489,17 @@ class DifferentialWheeledChassis(WheeledChassis):
         speed = speed or self._travel_speed
 
         if not speed:
-            return NullMotionMonitor()
+            return
 
         for w in self._wheels:
-            w.angular_position_set_point = w.pulse_count(distance / w.radius)
+            w.angular_position_set_point = distance / w.radius
 
             w.speed_regulation_enabled = True
-            w.angular_speed_set_point = w.pulse_count(speed / w.radius)
+            w.angular_speed_set_point = speed / w.radius
 
         self._wheels_sync_start(RegulatedMotor.COMMAND_RUN_TO_REL_POS)
 
-        return self._monitor_move(
-                                on_start=on_start,
-                                on_complete=on_complete,
-                                on_stalled=on_stalled,
-                                callback_args=callback_args
-                                )
-
-    def arc(self, radius, angle, speed=None, on_start=None, on_complete=None, on_stalled=None, callback_args=None):
+    def arc(self, radius, angle, speed=None):
         """ Moves the robot along an arc with a specified radius and angle, after which the robot stops moving.
 
         If radius is positive, the robot turns left, the center of the circle being on its left side. If it
@@ -450,6 +508,9 @@ class DifferentialWheeledChassis(WheeledChassis):
         The sign of the angle gives the direction of the spin (CCW if positive, CW if negative). Hence the combined
         signs of radius and angle specify the direction of move (forward or backward) along the arc. If both are
         the same, the robot will move forward. If they are different it will move backwards.
+
+        This method is asynchronous, which means that it returns immediately. To manage the
+        movement, it is easier to use a :py:class:`.navigation.MovePilot` on top of the chassis.
 
         The robot will stop when its heading has changed by the provided angle.
 
@@ -463,184 +524,75 @@ class DifferentialWheeledChassis(WheeledChassis):
             radius (float): radius of the arc, 0 for a rotation in place
             angle (float): the heading change
             speed (float): the speed along the path, if different from default one
-            on_start, on_on_complete, on_stalled, callback_args: see :py:meth:`drive`
-
-        Returns:
-            MotionMonitor: the motion monitoring object
         """
         speed = abs(speed or self._travel_speed)
 
         if not speed:
-            return NullMotionMonitor()
+            return
 
         for w in self._wheels:
-            pulse_count = w.pulse_count((radius + w.offset) * math.radians(angle) / w.radius)
-            w.angular_position_set_point = pulse_count
+            position = (radius + w.offset) * math.radians(angle) / w.radius
+            w.angular_position_set_point = position
 
             w.speed_regulation_enabled = True
-            w.angular_speed_set_point = pulse_count * speed / float(angle)
+            w.angular_speed_set_point = position * speed / float(angle)
 
         self._wheels_sync_start(RegulatedMotor.COMMAND_RUN_TO_REL_POS)
 
-        return self._monitor_move(
-                                on_start=on_start,
-                                on_complete=on_complete,
-                                on_stalled=on_stalled,
-                                callback_args=callback_args
-                                )
-
-    def rotate(self, angle, speed=None, on_start=None, on_complete=None, on_stalled=None, callback_args=None):
-        """ Rotates for the specified amount of degrees.
-
-        Nothing else but the special case of a null radius arc.
-
-        See :py:meth:`arc` for detailed documentation.
-        """
-        return self.arc(0, angle, speed, on_start, on_complete, on_stalled, callback_args)
-
-    def rotate_right(self, angle, **kwargs):
-        """ Convenience shortcut to avoid taking care of the angle sign.
-
-        The sign if the passed angle value is discarded.
-
-        .. seealso::
-
-            :py:meth:`rotate`
-        """
-        return self.rotate(-abs(angle), **kwargs)
-
-    def rotate_left(self, angle, **kwargs):
-        """ Same as :py:meth:`rotate_right` in the opposite direction.
-        """
-        return self.rotate(abs(angle), **kwargs)
-
-    def stop(self, stop_command=None):
-        """ Immediate stop, using the current motor stop setting.
+    def stop(self, stop_option=None):
+        """ Immediate stop.
 
         Args:
-            stop_command (str): optional stop command, among `RegulatedMotor.STOP_COMMAND_xxx`.
+            stop_option (int): optional stop command, among `WheeledChassis.StopOption` values.
                 If not provided, use the current motors setting
         """
+        stop_command = self._stop_commands[stop_option] if stop_option else None
         for w in self._wheels:
-            w.motor.stop(stop_command=stop_command)
+            w.motor.stop(stop_option=stop_command)
 
 
-class MotionMonitor(threading.Thread):
-    """ An instance of this class is returned by pilot motion commands.
+class OmniWheeledChassis(DifferentialWheeledChassis):
+    """ Models a omni wheels (aka holonomic wheels) chassis,
+    and provides the access to properties and methods specific to this type of
+    mechanical architecture.
 
-    It extends the standard :py:class:`threading.Thread` class by adding
-    a couple of convenience methods and properties.
+    This kind of platform is also called *kiwi drive* or *Killough*.
+
+    .. warning:: work in progress
     """
-    def __init__(self, chassis, on_start=None, on_complete=None, on_stalled=None, callback_args=None, **kwargs):
-        """ All the callbacks receive the pilot as first argument, and can accept
-        additional keyword parameters, which will contain the content
-        of the `callback_args` dictionary passed here.
+    def _check_wheels(self, wheels):
+        """
+        Args:
+            wheels (list[OmniWheel]): the wheels of the chassis
+        """
+        super(DifferentialWheeledChassis, self)._check_wheels(wheels)
+
+        if len(wheels) < 3:
+            raise ValueError('this chassis needs at least three wheels')
+        if not all((isinstance(wheel, OmniWheel) for wheel in wheels)):
+            raise ValueError('this chassis needs omni-wheels')
+
+    def travel_cartesian(self, motion, speed=None):
+        """ Travels according to a given relative motion.
+
+        The motion is provided as a 3 components vector:
+        - X coordinate
+        - Y coordinate
+        - rotation angle
+
+        If the speed is provided, it must use the same format.
 
         Args:
-            chassis (WheeledChassis): the associated pilot
-            on_start (callable): an optional callback invoked when starting the motion
-            on_complete (callable): an optional callback invoked at the normal completion of the motion.
-            on_stalled (callable): an optional callback invoked when a motor stalled situation is detected
-            callback_args (dict): an optional dictionary defining the kwargs which will be passed to the callbacks.
-            \**kwargs: transmitted to super
+            motion (iterable[float]): the relative motion vector
+            speed (iterable[float]): the speed vector
         """
-        super(MotionMonitor, self).__init__(**kwargs)
-        self._chassis = chassis
-        self._on_start = on_start
-        self._on_complete = on_complete
-        self._on_stalled = on_stalled
-        self._callback_args = callback_args or {}
-        self._stalled = False
-        self._stopped = False
+        try:
+            x_rel, y_rel, angle = motion
+        except ValueError:
+            raise ValueError('motion vector size must be 3')
+        try:
+            x_speed, y_speed, r_speed = speed
+        except ValueError:
+            raise ValueError('speed vector size must be 3')
 
-    @property
-    def stalled(self):
-        """ Tells if the motion was interrupted by a motor being stalled.
-
-        :type: bool
-        """
-        return self._stalled
-
-    @property
-    def running(self):
-        """ Tells if the motion is still ongoing..
-
-        Can be used to test if it could complete within the wait delay.
-
-        :type: bool
-        """
-        return self.is_alive()
-
-    def wait(self, delay=60):
-        """ Wait for the motion to be complete.
-
-        Extends the inherited :py:meth:`threading.Thread.join` method by
-        adding a default delay value. Although discouraged, it is allowed
-        to pass `None` for a forever wait.
-
-        The monitoring loop is stopped in case of timeout, to avoid
-        callbacks being called at some later moment.
-
-        Args:
-            delay (float): the maximum wait time, in seconds.
-        Returns:
-            the instance, so the call can be chained with the motion command,
-            while still returning the monitor to the caller
-        """
-        self.join(delay)
-        if self.is_alive():
-            self._stopped = True
-        return self
-
-    def stop(self):
-        """ Stops the monitor and waits for the thread to end.
-        """
-        self._stopped = True
-        self.join()
-
-    def run(self):
-        if self._on_start:
-            self._on_start(self._chassis, **self._callback_args)
-
-        motors = tuple((w.motor for w in self._chassis.wheels))
-        prev_positions = None
-
-        while not self._stopped:
-            s_p = [(_m.state, _m.position) for _m in motors]
-
-            # if both motors are holding their position, it means that they have reached the goal
-            if all(('holding' in s for s, _ in s_p)):
-                if self._on_complete:
-                    self._on_complete(self._chassis, **self._callback_args)
-                return
-
-            # check if one of the motors is not stalled, by comparing the current positions
-            # and the previous ones (if available)
-            # TODO find why the speed cannot be used (always 0)
-            if prev_positions and any((pp == sp[1] and 'holding' not in sp[0] for pp, sp in zip(prev_positions, s_p))):
-                self._stalled = True
-                if self._on_stalled:
-                    self._on_stalled(self._chassis, **self._callback_args)
-                return
-
-            prev_positions = [p for _, p in s_p]
-            time.sleep(0.1)
-
-
-class NullMotionMonitor(object):
-    """ A dummy monitor imitating real ones methods and used for handling special
-    cases resulting in null motions.
-    """
-    def wait(self, *kwargs):
-        return self
-
-    def stop(self):
-        pass
-
-    @property
-    def running(self):
-        return False
-
-    @property
-    def stalled(self):
-        return False
+        raise NotImplementedError()
