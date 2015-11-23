@@ -112,7 +112,7 @@ class MovePilot(object):
             pilot.travel(250).wait()
 
             # asynchronous usage
-            def arrived(chassis):
+            def arrived(chassis, move):
                 print('just arrived')
 
             mvt = pilot.travel(distance=250, speed=100, on_complete=arrived)
@@ -128,6 +128,7 @@ class MovePilot(object):
         self._chassis.travel(distance=distance, speed=speed)
         return MotionMonitor(
             self._chassis,
+            Move(Move.MOVE_STRAIGHT, distance=distance),
             on_start=on_start, on_complete=on_complete, on_stalled=on_stalled, callback_args=callback_args
         )
 
@@ -164,6 +165,7 @@ class MovePilot(object):
         self._chassis.arc(radius=radius, angle=angle, speed=speed)
         return MotionMonitor(
             self._chassis,
+            Move(Move.MOVE_ARC, radius=radius, angle=angle),
             on_start=on_start, on_complete=on_complete, on_stalled=on_stalled, callback_args=callback_args
         )
 
@@ -186,6 +188,7 @@ class MovePilot(object):
         self._chassis.rotate(angle=angle, speed=speed)
         return MotionMonitor(
             self._chassis,
+            Move(Move.MOVE_ROTATE, angle=angle),
             on_start=on_start, on_complete=on_complete, on_stalled=on_stalled, callback_args=callback_args
         )
 
@@ -688,13 +691,14 @@ class MotionMonitor(threading.Thread):
     (e.g. :py:attr:`stalled`, :py:attr:`running`,...) for getting information
     about whit is going.
     """
-    def __init__(self, chassis, on_start=None, on_complete=None, on_stalled=None, callback_args=None, **kwargs):
+    def __init__(self, chassis, move, on_start=None, on_complete=None, on_stalled=None, callback_args=None, **kwargs):
         """ All the callbacks receive the pilot as first argument, and can accept
         additional keyword parameters, which will contain the content
         of the `callback_args` dictionary passed here.
 
         Args:
             chassis (WheeledChassis): the associated pilot
+            move (Move): the movement which is monitor
             on_start (callable): an optional callback invoked when starting the motion
             on_complete (callable): an optional callback invoked at the normal completion of the motion.
             on_stalled (callable): an optional callback invoked when a motor stalled situation is detected
@@ -703,6 +707,7 @@ class MotionMonitor(threading.Thread):
         """
         super(MotionMonitor, self).__init__(**kwargs)
         self._chassis = chassis
+        self._move = move
         self._on_start = on_start
         self._on_complete = on_complete
         self._on_stalled = on_stalled
@@ -759,7 +764,7 @@ class MotionMonitor(threading.Thread):
 
     def run(self):
         if self._on_start:
-            self._on_start(self._chassis, **self._callback_args)
+            self._on_start(self._chassis, self._move, **self._callback_args)
 
         motors = tuple((w.motor for w in self._chassis.wheels))
         prev_positions = None
@@ -770,7 +775,7 @@ class MotionMonitor(threading.Thread):
             # if both motors are holding their position, it means that they have reached the goal
             if all(('holding' in s for s, _ in s_p)):
                 if self._on_complete:
-                    self._on_complete(self._chassis, **self._callback_args)
+                    self._on_complete(self._chassis, self._move, **self._callback_args)
                 return
 
             # check if one of the motors is not stalled, by comparing the current positions
@@ -779,7 +784,7 @@ class MotionMonitor(threading.Thread):
             if prev_positions and any((pp == sp[1] and 'holding' not in sp[0] for pp, sp in zip(prev_positions, s_p))):
                 self._stalled = True
                 if self._on_stalled:
-                    self._on_stalled(self._chassis, **self._callback_args)
+                    self._on_stalled(self._chassis, self._move, **self._callback_args)
                 return
 
             prev_positions = [p for _, p in s_p]
@@ -1031,3 +1036,41 @@ class Pose(namedtuple('Pose', 'x y heading')):
             radius = dist / 2 / math.sin(alpha)
             # the arc angle is twice the angle between the chord and the tangent
             return self.circle_center(radius), 2 * alpha
+
+
+class Move(namedtuple('Move', 'move_type distance angle')):
+    """ Models an elementary move (straight, arc, rotate,...) for communication
+    to the callbacks.
+
+    Instances are immutable.
+    """
+    __slots__ = ()
+
+    MOVE_STRAIGHT, MOVE_ARC, MOVE_ROTATE = range(1, 4)
+
+    _str_fmt = {
+        MOVE_STRAIGHT: "Move(STRAIGHT, dist=%(dist)f)",
+        MOVE_ARC: "Move(ARC, radius=%(radius)f, angle=%(angle)f)",
+        MOVE_ROTATE: "Move(ROTATE, angle=%(angle)f)",
+    }
+
+    def __new__(cls, move_type, distance=None, radius=None, angle=None):
+        if move_type == cls.MOVE_STRAIGHT:
+            radius = angle = None
+            if distance is None:
+                raise ValueError('missing distance property')
+        elif move_type == cls.MOVE_ARC:
+            distance = None
+            if any(a is None for a in (radius, angle)):
+                raise ValueError('missing radius or angle property')
+        elif move_type == cls.MOVE_ROTATE:
+            distance = radius = None
+            if angle is None:
+                raise ValueError('missing angle property')
+        else:
+            raise ValueError('invalid move type')
+
+        return super(Move, cls).__new__(move_type, distance, radius, angle)
+
+    def __str__(self):
+        return self._str_fmt[self.move_type] % {'dist': self.distance, 'radius': self.radius, 'angle': self.angle}

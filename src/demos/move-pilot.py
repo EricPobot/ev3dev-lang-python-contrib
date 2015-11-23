@@ -51,17 +51,17 @@ pilot = MovePilot(chassis)
 start_time = None
 
 
-def started(chassis):
+def started(chassis, move):
     global start_time
     start_time = time.time()
-    print('> started')
+    print('> started ' + str(move))
 
 
-def complete(chassis):
+def complete(chassis, move):
     print('> completed in %.1fs' % (time.time() - start_time))
 
 
-def stalled(chassis):
+def stalled(chassis, move):
     print('> ** stalled **')
 
 mon = pilot.travel(distance=200, on_start=started, on_complete=complete, on_stalled=stalled)
