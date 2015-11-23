@@ -12,10 +12,8 @@ Module interface
     :nosignatures:
 
     MovePilot
-    MotionMonitor
-    NullMotionMonitor
-    Point
-    Pose
+    MoveMonitor
+    NullMoveMonitor
 
 Reference
 ---------
@@ -30,18 +28,10 @@ End-user classes
 Support classes
 ^^^^^^^^^^^^^^^
 
-.. autoclass:: MotionMonitor
+.. autoclass:: MoveMonitor
     :members:
     :show-inheritance:
 
-.. autoclass:: NullMotionMonitor
-    :members:
-    :show-inheritance:
-
-.. autoclass:: Point
-    :members:
-    :show-inheritance:
-
-.. autoclass:: Pose
+.. autoclass:: NullMoveMonitor
     :members:
     :show-inheritance:

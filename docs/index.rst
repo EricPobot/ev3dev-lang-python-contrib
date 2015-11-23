@@ -11,6 +11,7 @@ its organization and API.
 
    mod-navigation
    mod-chassis
+   mod-geometry
 
 Demos
 -----
