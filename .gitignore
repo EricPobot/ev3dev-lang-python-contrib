@@ -7,3 +7,4 @@ dist
 _build
 RELEASE-VERSION
 .fab_tasks~
+attic.py*
